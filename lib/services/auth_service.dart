@@ -1,27 +1,43 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Get current user
   User? get currentUser => _auth.currentUser;
 
-  // Auth state changes stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // Sign in with email and password
+  Future<void> _createUserData(User user) async {
+    // 1. Buat dokumen profil di koleksi 'users'
+    await _firestore.collection('users').doc(user.uid).set({
+      'name': user.displayName ?? 'New User',
+      'email': user.email,
+      'photoUrl': user.photoURL,
+      'role': 'user', // Role default
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    // 2. Buat dokumen dompet di koleksi 'wallets'
+    await _firestore.collection('wallets').add({
+      'user_id': user.uid,
+      'balance': 0,
+      'last_updated': FieldValue.serverTimestamp(),
+    });
+  }
+
   Future<UserCredential?> signInWithEmailAndPassword({
     required String email,
     required String password,
   }) async {
     try {
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      return await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password.trim(),
       );
-      return userCredential;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
     } catch (e) {
@@ -29,7 +45,6 @@ class AuthService {
     }
   }
 
-  // Register with email and password
   Future<UserCredential?> registerWithEmailAndPassword({
     required String email,
     required String password,
@@ -39,6 +54,11 @@ class AuthService {
         email: email.trim(),
         password: password.trim(),
       );
+      
+      if (userCredential.user != null) {
+        await _createUserData(userCredential.user!);
+      }
+
       return userCredential;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
@@ -47,28 +67,27 @@ class AuthService {
     }
   }
 
-  // Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      // Trigger the authentication flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       
       if (googleUser == null) {
-        // User canceled the sign-in
         throw 'Google sign-in was canceled.';
       }
 
-      // Obtain the auth details from the request
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-      // Create a new credential
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // Once signed in, return the UserCredential
       UserCredential userCredential = await _auth.signInWithCredential(credential);
+
+      final userDoc = await _firestore.collection('users').doc(userCredential.user!.uid).get();
+      if (!userDoc.exists && userCredential.user != null) {
+        await _createUserData(userCredential.user!);
+      }
+
       return userCredential;
     } on FirebaseAuthException catch (e) {
       throw _handleAuthException(e);
@@ -77,7 +96,6 @@ class AuthService {
     }
   }
 
-  // Sign out
   Future<void> signOut() async {
     try {
       await Future.wait([
@@ -89,7 +107,6 @@ class AuthService {
     }
   }
 
-  // Handle Firebase Auth exceptions
   String _handleAuthException(FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':
@@ -102,10 +119,6 @@ class AuthService {
         return 'The password is too weak.';
       case 'invalid-email':
         return 'The email address is not valid.';
-      case 'user-disabled':
-        return 'This user account has been disabled.';
-      case 'too-many-requests':
-        return 'Too many requests. Please try again later.';
       default:
         return 'An error occurred: ${e.message}';
     }

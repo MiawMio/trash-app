@@ -1,35 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:trash_app/screens/admin_approval_screen.dart';
 import 'package:trash_app/screens/wallet_screen.dart';
 import '../constants/app_colors.dart';
-import '../services/auth_service.dart';
-import 'login_screen.dart';
+import '../services/profile_service.dart';
 import 'profile_screen.dart';
-import 'edit_profile_screen.dart';
 import 'bank_sampah_info_screen.dart';
 import 'waste_list_screen.dart';
 
-class MenuScreen extends StatelessWidget {
+class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
 
-  Future<void> _logout(BuildContext context) async {
+  @override
+  State<MenuScreen> createState() => _MenuScreenState();
+}
+
+class _MenuScreenState extends State<MenuScreen> {
+  final ProfileService _profileService = ProfileService();
+  String? _userRole;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserRole();
+  }
+
+  Future<void> _fetchUserRole() async {
     try {
-      await AuthService().signOut();
-      if (context.mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (route) => false,
-        );
+      final profile = await _profileService.getUserProfile();
+      if (mounted) {
+        setState(() {
+          _userRole = profile['role'];
+        });
       }
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Logout failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      // Handle error
     }
   }
 
@@ -66,8 +70,6 @@ class MenuScreen extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const Spacer(),
-                  // IconButton untuk logout telah dihapus di sini
                 ],
               ),
             ),
@@ -77,18 +79,42 @@ class MenuScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    _buildMenuItem(
-                      icon: Icons.delete_outline,
-                      iconColor: AppColors.primaryGreen,
-                      title: 'List\nSampah',
-                      backgroundColor: const Color(0xFFE8F5E8),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const WasteListScreen()),
-                        );
-                      },
-                    ),
+                    // HANYA MUNCUL JIKA ROLE ADALAH ADMIN
+                    if (_userRole == 'admin')
+                      _buildMenuItem(
+                        icon: Icons.approval,
+                        iconColor: Colors.blueAccent,
+                        title: 'Persetujuan\nSetoran',
+                        backgroundColor: Colors.blue.shade100,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const AdminApprovalScreen()),
+                          );
+                        },
+                      ),
+                    
+                    // HANYA MUNCUL JIKA ROLE ADALAH USER
+                    if (_userRole == 'user')
+                      Column(
+                        children: [
+                          // 'List Sampah' sekarang menjadi menu utama untuk user
+                          _buildMenuItem(
+                            icon: Icons.delete_outline,
+                            iconColor: AppColors.primaryGreen,
+                            title: 'List\nSampah',
+                            backgroundColor: const Color(0xFFE8F5E8),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const WasteListScreen()),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    
+                    // MENU YANG MUNCUL UNTUK SEMUA ROLE
                     const SizedBox(height: 20),
                     _buildMenuItem(
                       icon: Icons.account_balance_wallet,

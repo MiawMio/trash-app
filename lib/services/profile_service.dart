@@ -28,6 +28,7 @@ class ProfileService {
           'email': user.email ?? '',
           'photoUrl': null,
           'createdAt': FieldValue.serverTimestamp(),
+          'role': 'user', // Tambahkan role default
         };
         
         await _firestore.collection('users').doc(user.uid).set(defaultData);
@@ -40,6 +41,7 @@ class ProfileService {
         'name': prefs.getString('user_name') ?? user.displayName ?? 'Masukan Nama',
         'email': user.email ?? '',
         'photoUrl': prefs.getString('user_photo_url'),
+        'role': 'user', // Fallback role
       };
     }
   }
@@ -121,6 +123,7 @@ class ProfileService {
           'name': user.displayName ?? 'Masukan Nama',
           'email': user.email ?? '',
           'photoUrl': null,
+          'role': 'user',
         };
       }
     });
