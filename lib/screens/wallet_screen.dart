@@ -2,16 +2,15 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:trash_app/screens/request_withdrawal_screen.dart';
 import 'package:trash_app/services/auth_service.dart';
 import '../constants/app_colors.dart';
 
-// Model untuk Wallet dan Transaksi
+// ... (Model Wallet dan Transaction sama seperti sebelumnya, pastikan ada di sini)
 class Wallet {
   final double balance;
   final List<Transaction> transactions;
-
   Wallet({required this.balance, required this.transactions});
-
   factory Wallet.fromJson(Map<String, dynamic> json) {
     var txList = json['transactions'] as List;
     List<Transaction> transactions = txList.map((i) => Transaction.fromJson(i)).toList();
@@ -21,23 +20,21 @@ class Wallet {
     );
   }
 }
-
 class Transaction {
   final String description;
   final double amount;
   final DateTime createdAt;
-
-  Transaction({required this.description, required this.amount, required this.createdAt});
-
+  final String type;
+  Transaction({required this.description, required this.amount, required this.createdAt, required this.type});
   factory Transaction.fromJson(Map<String, dynamic> json) {
     return Transaction(
       description: json['description'],
       amount: (json['amount'] as num).toDouble(),
       createdAt: DateTime.parse(json['created_at']),
+      type: json['type'] ?? 'credit',
     );
   }
 }
-
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -71,13 +68,11 @@ class _WalletScreenState extends State<WalletScreen> {
 
     if (response.statusCode == 200) {
       return Wallet.fromJson(jsonDecode(response.body));
-    } else {
-      // Jika dompet tidak ditemukan, buat dompet baru untuk pengguna
-      if (response.statusCode == 404) {
-        return Wallet(balance: 0, transactions: []);
-      }
-      throw Exception('Failed to load wallet data: ${response.body}');
     }
+    if (response.statusCode == 404) {
+      return Wallet(balance: 0, transactions: []);
+    }
+    throw Exception('Failed to load wallet data: ${response.body}');
   }
 
   @override
@@ -87,7 +82,6 @@ class _WalletScreenState extends State<WalletScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
@@ -95,27 +89,18 @@ class _WalletScreenState extends State<WalletScreen> {
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: const BoxDecoration(
-                        color: AppColors.white,
-                        shape: BoxShape.circle,
-                      ),
+                      width: 40, height: 40,
+                      decoration: const BoxDecoration(color: AppColors.white, shape: BoxShape.circle),
                       child: const Icon(Icons.arrow_back, color: AppColors.primaryGreen),
                     ),
                   ),
                   const SizedBox(width: 12),
                   const Text('Dompetku', style: TextStyle(color: AppColors.white, fontSize: 24, fontWeight: FontWeight.w600)),
                   const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.refresh, color: Colors.white),
-                    onPressed: _loadWalletData, // Tombol refresh
-                  )
+                  IconButton(icon: const Icon(Icons.refresh, color: Colors.white), onPressed: _loadWalletData)
                 ],
               ),
             ),
-            
-            // Konten Utama
             Expanded(
               child: FutureBuilder<Wallet>(
                 future: _walletFuture,
@@ -127,7 +112,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
                   }
                   if (!snapshot.hasData) {
-                    return const Center(child: Text('Tidak dapat memuat data dompet.', style: TextStyle(color: Colors.white)));
+                    return const Center(child: Text('Tidak dapat memuat data dompet.', style: const TextStyle(color: Colors.white)));
                   }
 
                   final wallet = snapshot.data!;
@@ -135,7 +120,6 @@ class _WalletScreenState extends State<WalletScreen> {
 
                   return Column(
                     children: [
-                      // Balance Card
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                         padding: const EdgeInsets.all(24),
@@ -150,11 +134,27 @@ class _WalletScreenState extends State<WalletScreen> {
                             const Text('Total Saldo', style: TextStyle(color: Colors.white, fontSize: 16)),
                             const SizedBox(height: 12),
                             Text(currencyFormatter.format(wallet.balance), style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 20),
+                            SizedBox( // Tombol Tarik Dana
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.send_to_mobile),
+                                label: const Text('Tarik Dana'),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => RequestWithdrawalScreen(currentBalance: wallet.balance)),
+                                  ).then((_) => _loadWalletData()); // Refresh data setelah kembali
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: AppColors.primaryGreen
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                      
-                      // Transaction History Header
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 20),
                         child: Row(
@@ -165,8 +165,6 @@ class _WalletScreenState extends State<WalletScreen> {
                           ],
                         ),
                       ),
-                      
-                      // Transaction List
                       Expanded(
                         child: Container(
                           margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -176,10 +174,18 @@ class _WalletScreenState extends State<WalletScreen> {
                                   itemCount: wallet.transactions.length,
                                   itemBuilder: (context, index) {
                                     final tx = wallet.transactions[index];
-                                    return _buildTransactionItem(
-                                      description: tx.description,
-                                      amount: currencyFormatter.format(tx.amount),
-                                      date: DateFormat('dd MMM yyyy, HH:mm').format(tx.createdAt),
+                                    final isCredit = tx.type == 'credit';
+                                    return Card(
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      child: ListTile(
+                                        leading: Icon(isCredit ? Icons.arrow_downward : Icons.arrow_upward, color: isCredit ? Colors.green : Colors.red),
+                                        title: Text(tx.description, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        subtitle: Text(DateFormat('dd MMM yyyy, HH:mm').format(tx.createdAt)),
+                                        trailing: Text(
+                                          '${isCredit ? '+' : '-'} ${currencyFormatter.format(tx.amount)}',
+                                          style: TextStyle(color: isCredit ? Colors.green : Colors.red, fontWeight: FontWeight.bold)
+                                        ),
+                                      ),
                                     );
                                   },
                                 ),
@@ -192,19 +198,6 @@ class _WalletScreenState extends State<WalletScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTransactionItem({required String description, required String amount, required String date}) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: ListTile(
-        leading: const Icon(Icons.arrow_downward, color: Colors.green),
-        title: Text(description, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(date),
-        trailing: Text(amount, style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
       ),
     );
   }

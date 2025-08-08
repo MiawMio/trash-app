@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:trash_app/screens/admin_approval_screen.dart';
+import 'package:trash_app/screens/admin_history_screen.dart';
+import 'package:trash_app/screens/admin_withdrawal_approval_screen.dart';
 import 'package:trash_app/screens/wallet_screen.dart';
 import '../constants/app_colors.dart';
 import '../services/profile_service.dart';
@@ -27,13 +29,9 @@ class _MenuScreenState extends State<MenuScreen> {
   Future<void> _fetchUserRole() async {
     try {
       final profile = await _profileService.getUserProfile();
-      if (mounted) {
-        setState(() {
-          _userRole = profile['role'];
-        });
-      }
+      if (mounted) setState(() => _userRole = profile['role']);
     } catch (e) {
-      // Handle error
+      if (mounted) setState(() => _userRole = 'user');
     }
   }
 
@@ -51,25 +49,11 @@ class _MenuScreenState extends State<MenuScreen> {
                   Container(
                     width: 40,
                     height: 40,
-                    decoration: const BoxDecoration(
-                      color: AppColors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.eco,
-                      color: AppColors.primaryGreen,
-                      size: 24,
-                    ),
+                    decoration: const BoxDecoration(color: AppColors.white, shape: BoxShape.circle),
+                    child: const Icon(Icons.eco, color: AppColors.primaryGreen, size: 24),
                   ),
                   const SizedBox(width: 12),
-                  const Text(
-                    'Menu',
-                    style: TextStyle(
-                      color: AppColors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  const Text('Menu', style: TextStyle(color: AppColors.white, fontSize: 24, fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
@@ -77,84 +61,69 @@ class _MenuScreenState extends State<MenuScreen> {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
+                child: Column( // <-- DIKEMBALIKAN menjadi Column
                   children: [
-                    // HANYA MUNCUL JIKA ROLE ADALAH ADMIN
-                    if (_userRole == 'admin')
+                    if (_userRole == 'admin') ...[
                       _buildMenuItem(
                         icon: Icons.approval,
                         iconColor: Colors.blueAccent,
-                        title: 'Persetujuan\nSetoran',
+                        title: 'Persetujuan Setoran',
                         backgroundColor: Colors.blue.shade100,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const AdminApprovalScreen()),
-                          );
-                        },
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminApprovalScreen())),
                       ),
-                    
-                    // HANYA MUNCUL JIKA ROLE ADALAH USER
-                    if (_userRole == 'user')
-                      Column(
-                        children: [
-                          // 'List Sampah' sekarang menjadi menu utama untuk user
-                          _buildMenuItem(
-                            icon: Icons.delete_outline,
-                            iconColor: AppColors.primaryGreen,
-                            title: 'List\nSampah',
-                            backgroundColor: const Color(0xFFE8F5E8),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const WasteListScreen()),
-                              );
-                            },
-                          ),
-                        ],
+                      const SizedBox(height: 20),
+                      _buildMenuItem(
+                        icon: Icons.price_check,
+                        iconColor: Colors.green,
+                        title: 'Persetujuan Penarikan',
+                        backgroundColor: Colors.green.shade100,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminWithdrawalApprovalScreen())),
                       ),
+                      const SizedBox(height: 20),
+                      _buildMenuItem(
+                        icon: Icons.history,
+                        iconColor: Colors.purple,
+                        title: 'History Penyetujuan',
+                        backgroundColor: Colors.purple.shade100,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminHistoryScreen())),
+                      ),
+                    ],
                     
-                    // MENU YANG MUNCUL UNTUK SEMUA ROLE
-                    const SizedBox(height: 20),
-                    _buildMenuItem(
-                      icon: Icons.account_balance_wallet,
-                      iconColor: Colors.orange.shade700,
-                      title: 'Dompetku',
-                      backgroundColor: Colors.orange.shade100,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const WalletScreen()),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    _buildMenuItem(
-                      icon: Icons.info_outline,
-                      iconColor: Colors.green.shade600,
-                      title: 'Informasi Bank\nSampah',
-                      backgroundColor: Colors.lightGreen.shade100,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const BankSampahInfoScreen()),
-                        );
-                      },
-                    ),
+                    if (_userRole == 'user') ...[
+                      _buildMenuItem(
+                        icon: Icons.delete_outline,
+                        iconColor: AppColors.primaryGreen,
+                        title: 'List Sampah',
+                        backgroundColor: const Color(0xFFE8F5E8),
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WasteListScreen())),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildMenuItem(
+                        icon: Icons.account_balance_wallet,
+                        iconColor: Colors.orange.shade700,
+                        title: 'Dompetku',
+                        backgroundColor: Colors.orange.shade100,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen())),
+                      ),
+                       const SizedBox(height: 20),
+                      _buildMenuItem(
+                        icon: Icons.info_outline,
+                        iconColor: Colors.green.shade600,
+                        title: 'Informasi Bank Sampah',
+                        backgroundColor: Colors.lightGreen.shade100,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BankSampahInfoScreen())),
+                      ),
+                    ],
+                      
                     const SizedBox(height: 20),
                     _buildMenuItem(
                       icon: Icons.person_outline,
                       iconColor: AppColors.black,
                       title: 'Profile',
                       backgroundColor: Colors.grey.shade200,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                        );
-                      },
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
                     ),
-                    const Spacer(),
+                    const Spacer(), // Spacer untuk mendorong bottom bar ke bawah
                   ],
                 ),
               ),
