@@ -48,13 +48,15 @@ class _WasteListScreenState extends State<WasteListScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Harga: Rp ${category.pricePerGram.toStringAsFixed(0)} / gram'),
+                // Menampilkan harga dan unit yang benar
+                Text('Harga: Rp ${category.price.toStringAsFixed(0)} / ${category.unit}'),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: weightController,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
-                    labelText: 'Berat (gram)',
+                    // Mengubah label input menjadi kg
+                    labelText: 'Berat (kg)', 
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
@@ -81,13 +83,17 @@ class _WasteListScreenState extends State<WasteListScreen> {
                   final userId = authService.currentUser?.uid;
                   if (userId == null) return;
                   
+                  // Konversi input kg ke gram sebelum dikirim ke API
+                  final weightInKg = double.parse(weightController.text);
+                  final weightInGrams = weightInKg * 1000;
+
                   final response = await http.post(
                     Uri.parse('https://trash-api-azure.vercel.app/api/submissions'),
                     headers: {'Content-Type': 'application/json'},
                     body: jsonEncode({
                       'userId': userId,
                       'categoryId': category.id,
-                      'weightInGrams': double.parse(weightController.text),
+                      'weightInGrams': weightInGrams, // API tetap menerima dalam gram
                     }),
                   );
 
@@ -193,7 +199,8 @@ class _WasteListScreenState extends State<WasteListScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(category.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  Text('Rp ${category.pricePerGram.toStringAsFixed(0)} / gram'),
+                  // Menampilkan harga per unit yang benar (kg atau gram)
+                  Text('Rp ${category.price.toStringAsFixed(0)} / ${category.unit}'),
                 ],
               ),
             ],
@@ -205,10 +212,10 @@ class _WasteListScreenState extends State<WasteListScreen> {
   
   IconData _getIconForCategory(String name) {
     switch (name.toLowerCase()) {
-      case 'plastik':
-        return Icons.local_drink;
       case 'kertas':
         return Icons.description;
+      case 'plastik':
+        return Icons.local_drink;
       case 'kaca':
         return Icons.broken_image;
       case 'logam':

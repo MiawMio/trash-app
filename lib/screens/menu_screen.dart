@@ -61,61 +61,70 @@ class _MenuScreenState extends State<MenuScreen> {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column( // <-- DIKEMBALIKAN menjadi Column
+                child: Column(
                   children: [
-                    if (_userRole == 'admin') ...[
-                      _buildMenuItem(
-                        icon: Icons.approval,
-                        iconColor: Colors.blueAccent,
-                        title: 'Persetujuan Setoran',
-                        backgroundColor: Colors.blue.shade100,
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminApprovalScreen())),
+                    // GRUP MENU KHUSUS ADMIN
+                    if (_userRole == 'admin')
+                      Column(
+                        children: [
+                          _buildMenuItem(
+                            icon: Icons.approval,
+                            iconColor: Colors.blueAccent,
+                            title: 'Persetujuan Setoran',
+                            backgroundColor: Colors.blue.shade100,
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminApprovalScreen())),
+                          ),
+                          const SizedBox(height: 20),
+                          _buildMenuItem(
+                            icon: Icons.price_check,
+                            iconColor: Colors.green,
+                            title: 'Persetujuan Penarikan',
+                            backgroundColor: Colors.green.shade100,
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminWithdrawalApprovalScreen())),
+                          ),
+                          const SizedBox(height: 20),
+                          _buildMenuItem(
+                            icon: Icons.history,
+                            iconColor: Colors.purple,
+                            title: 'History Penyetujuan',
+                            backgroundColor: Colors.purple.shade100,
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminHistoryScreen())),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 20),
-                      _buildMenuItem(
-                        icon: Icons.price_check,
-                        iconColor: Colors.green,
-                        title: 'Persetujuan Penarikan',
-                        backgroundColor: Colors.green.shade100,
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminWithdrawalApprovalScreen())),
-                      ),
-                      const SizedBox(height: 20),
-                      _buildMenuItem(
-                        icon: Icons.history,
-                        iconColor: Colors.purple,
-                        title: 'History Penyetujuan',
-                        backgroundColor: Colors.purple.shade100,
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminHistoryScreen())),
-                      ),
-                    ],
                     
-                    if (_userRole == 'user') ...[
-                      _buildMenuItem(
-                        icon: Icons.delete_outline,
-                        iconColor: AppColors.primaryGreen,
-                        title: 'List Sampah',
-                        backgroundColor: const Color(0xFFE8F5E8),
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WasteListScreen())),
+                    // GRUP MENU KHUSUS USER
+                    if (_userRole == 'user')
+                      Column(
+                        children: [
+                           _buildMenuItem(
+                            icon: Icons.delete_outline,
+                            iconColor: AppColors.primaryGreen,
+                            title: 'List Sampah',
+                            backgroundColor: const Color(0xFFE8F5E8),
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WasteListScreen())),
+                          ),
+                          const SizedBox(height: 20),
+                          _buildMenuItem(
+                            icon: Icons.account_balance_wallet,
+                            iconColor: Colors.orange.shade700,
+                            title: 'Dompetku',
+                            backgroundColor: Colors.orange.shade100,
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen())),
+                          ),
+                           const SizedBox(height: 20),
+                          _buildMenuItem(
+                            icon: Icons.info_outline,
+                            iconColor: Colors.green.shade600,
+                            title: 'Informasi Bank Sampah',
+                            backgroundColor: Colors.lightGreen.shade100,
+                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BankSampahInfoScreen())),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 20),
-                      _buildMenuItem(
-                        icon: Icons.account_balance_wallet,
-                        iconColor: Colors.orange.shade700,
-                        title: 'Dompetku',
-                        backgroundColor: Colors.orange.shade100,
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen())),
-                      ),
-                       const SizedBox(height: 20),
-                      _buildMenuItem(
-                        icon: Icons.info_outline,
-                        iconColor: Colors.green.shade600,
-                        title: 'Informasi Bank Sampah',
-                        backgroundColor: Colors.lightGreen.shade100,
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BankSampahInfoScreen())),
-                      ),
-                    ],
                       
                     const SizedBox(height: 20),
+                    // MENU UNTUK SEMUA ROLE
                     _buildMenuItem(
                       icon: Icons.person_outline,
                       iconColor: AppColors.black,
@@ -123,7 +132,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       backgroundColor: Colors.grey.shade200,
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
                     ),
-                    const Spacer(), // Spacer untuk mendorong bottom bar ke bawah
+                    const Spacer(),
                   ],
                 ),
               ),
