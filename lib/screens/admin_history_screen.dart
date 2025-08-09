@@ -21,14 +21,18 @@ class SubmissionHistory {
   });
 
   factory SubmissionHistory.fromJson(Map<String, dynamic> json) {
+    // Parsing waktu dari string ISO 8601 (UTC)
+    final utcTime = json['processed_at'] != null
+        ? DateTime.parse(json['processed_at'])
+        : DateTime.now();
+        
     return SubmissionHistory(
       userName: json['user_name'] ?? 'Unknown User',
       categoryName: json['category_name'] ?? 'No Category',
       weight: (json['weight_in_grams'] as num).toDouble(),
       status: json['status'] ?? 'unknown',
-      processedAt: json['processed_at'] != null
-          ? DateTime.parse(json['processed_at'])
-          : DateTime.now(),
+      // BAGIAN YANG DIPERBAIKI: Konversi waktu UTC ke waktu lokal perangkat
+      processedAt: utcTime.toLocal(),
     );
   }
 }
@@ -140,4 +144,4 @@ class _AdminHistoryScreenState extends State<AdminHistoryScreen> {
       ),
     );
   }
-}
+} 

@@ -3,14 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:trash_app/screens/request_withdrawal_screen.dart';
+import 'package:flutter/services.dart';
 import 'package:trash_app/services/auth_service.dart';
 import '../constants/app_colors.dart';
 
-// ... (Model Wallet dan Transaction sama seperti sebelumnya, pastikan ada di sini)
+// Model untuk Wallet dan Transaksi
 class Wallet {
   final double balance;
   final List<Transaction> transactions;
+
   Wallet({required this.balance, required this.transactions});
+
   factory Wallet.fromJson(Map<String, dynamic> json) {
     var txList = json['transactions'] as List;
     List<Transaction> transactions = txList.map((i) => Transaction.fromJson(i)).toList();
@@ -20,21 +23,33 @@ class Wallet {
     );
   }
 }
+
 class Transaction {
   final String description;
   final double amount;
   final DateTime createdAt;
   final String type;
-  Transaction({required this.description, required this.amount, required this.createdAt, required this.type});
+
+  Transaction({
+    required this.description,
+    required this.amount,
+    required this.createdAt,
+    required this.type,
+  });
+
   factory Transaction.fromJson(Map<String, dynamic> json) {
+    // Parsing waktu dari string ISO 8601 (UTC)
+    final utcTime = DateTime.parse(json['created_at']);
     return Transaction(
-      description: json['description'],
+      description: json['description'] ?? 'No description',
       amount: (json['amount'] as num).toDouble(),
-      createdAt: DateTime.parse(json['created_at']),
+      // Konversi waktu UTC ke waktu lokal perangkat
+      createdAt: utcTime.toLocal(),
       type: json['type'] ?? 'credit',
     );
   }
 }
+
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -77,6 +92,8 @@ class _WalletScreenState extends State<WalletScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+
     return Scaffold(
       backgroundColor: AppColors.primaryGreen,
       body: SafeArea(
@@ -112,11 +129,10 @@ class _WalletScreenState extends State<WalletScreen> {
                     return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
                   }
                   if (!snapshot.hasData) {
-                    return const Center(child: Text('Tidak dapat memuat data dompet.', style: const TextStyle(color: Colors.white)));
+                    return const Center(child: Text('Tidak dapat memuat data dompet.', style: TextStyle(color: Colors.white)));
                   }
 
                   final wallet = snapshot.data!;
-                  final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
                   return Column(
                     children: [
@@ -133,19 +149,27 @@ class _WalletScreenState extends State<WalletScreen> {
                           children: [
                             const Text('Total Saldo', style: TextStyle(color: Colors.white, fontSize: 16)),
                             const SizedBox(height: 12),
-                            Text(currencyFormatter.format(wallet.balance), style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                            GestureDetector(
+                              onTap: () {
+                                Clipboard.setData(ClipboardData(text: wallet.balance.toStringAsFixed(0)));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Saldo disalin ke clipboard')),
+                                );
+                              },
+                              child: Text(currencyFormatter.format(wallet.balance), style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                            ),
                             const SizedBox(height: 20),
-                            SizedBox( // Tombol Tarik Dana
+                            SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
                                 icon: const Icon(Icons.send_to_mobile),
                                 label: const Text('Tarik Dana'),
-                                onPressed: () {
+                                onPressed: wallet.balance > 0 ? () {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(builder: (_) => RequestWithdrawalScreen(currentBalance: wallet.balance)),
-                                  ).then((_) => _loadWalletData()); // Refresh data setelah kembali
-                                },
+                                  ).then((_) => _loadWalletData());
+                                } : null,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.white,
                                   foregroundColor: AppColors.primaryGreen
@@ -181,10 +205,13 @@ class _WalletScreenState extends State<WalletScreen> {
                                         leading: Icon(isCredit ? Icons.arrow_downward : Icons.arrow_upward, color: isCredit ? Colors.green : Colors.red),
                                         title: Text(tx.description, style: const TextStyle(fontWeight: FontWeight.bold)),
                                         subtitle: Text(DateFormat('dd MMM yyyy, HH:mm').format(tx.createdAt)),
-                                        trailing: Text(
+                                        trailing: Text( // <-- AWAL WIDGET TEXT
                                           '${isCredit ? '+' : '-'} ${currencyFormatter.format(tx.amount)}',
-                                          style: TextStyle(color: isCredit ? Colors.green : Colors.red, fontWeight: FontWeight.bold)
-                                        ),
+                                          style: TextStyle(
+                                            color: isCredit ? Colors.green : Colors.red,
+                                            fontWeight: FontWeight.bold
+                                          ),
+                                        ), // <-- AKHIR WIDGET TEXT (Tanda kurung yang benar)
                                       ),
                                     );
                                   },
