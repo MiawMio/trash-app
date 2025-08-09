@@ -1,7 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:trash_app/models/wallet_model.dart';
+import 'package:trash_app/services/auth_service.dart';
 import '../constants/app_colors.dart';
-import '../services/auth_service.dart';
-import 'login_screen.dart';
 import 'menu_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -12,216 +16,159 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String selectedPeriod = 'Month';
-  int selectedBottomIndex = 0;
+  final AuthService _authService = AuthService();
+  Future<Wallet>? _walletFuture;
+  String _selectedPeriod = 'Month';
 
-  Future<void> _logout(BuildContext context) async {
-    try {
-      await AuthService().signOut();
-      if (context.mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (route) => false,
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Logout failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  void _loadData() {
+    final userId = _authService.currentUser?.uid;
+    if (userId != null) {
+      setState(() {
+        _walletFuture = _fetchWallet(userId);
+      });
     }
+  }
+
+  Future<Wallet> _fetchWallet(String userId) async {
+    final url = Uri.parse('https://trash-api-azure.vercel.app/api/wallet?userId=$userId');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return Wallet.fromJson(jsonDecode(response.body));
+    }
+    if (response.statusCode == 404) {
+      return Wallet(balance: 0, transactions: []);
+    }
+    throw Exception('Failed to load wallet data: ${response.body}');
+  }
+
+  List<Transaction> _filterTransactions(List<Transaction> allTransactions) {
+    final now = DateTime.now();
+    return allTransactions.where((tx) {
+      final txDate = tx.createdAt;
+      switch (_selectedPeriod) {
+        case 'Day':
+          return txDate.year == now.year && txDate.month == now.month && txDate.day == now.day;
+        case 'Week':
+          final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+          return txDate.isAfter(startOfWeek);
+        case 'Month':
+          return txDate.year == now.year && txDate.month == now.month;
+        case 'Year':
+          return txDate.year == now.year;
+        default:
+          return true;
+      }
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+
     return Scaffold(
       backgroundColor: AppColors.primaryGreen,
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
                 children: [
-                  // Logo
                   Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: AppColors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.eco,
-                      color: AppColors.primaryGreen,
-                      size: 24,
-                    ),
+                    width: 40, height: 40,
+                    decoration: const BoxDecoration(color: AppColors.white, shape: BoxShape.circle),
+                    child: const Icon(Icons.eco, color: AppColors.primaryGreen, size: 24),
                   ),
                   const SizedBox(width: 12),
-                  // App name
-                  const Text(
-                    'Rosella',
-                    style: TextStyle(
-                      color: AppColors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  const Text('Rosella', style: TextStyle(color: AppColors.white, fontSize: 24, fontWeight: FontWeight.w600)),
                   const Spacer(),
-                  // Tombol Logout telah dihapus di sini
+                  IconButton(icon: const Icon(Icons.refresh, color: Colors.white), onPressed: _loadData),
                 ],
               ),
             ),
 
-            // Financial Info Card
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.blue.shade400,
-                      AppColors.primaryGreen,
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: const BoxDecoration(
-                            color: AppColors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.attach_money,
-                            color: AppColors.primaryGreen,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Info',
-                          style: TextStyle(
-                            color: AppColors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Rp.149.868',
-                      style: TextStyle(
-                        color: AppColors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade600,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        '+49.89%',
-                        style: TextStyle(
-                          color: AppColors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Main content area with chart
             Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30),
-                    topRight: Radius.circular(30),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
+              child: FutureBuilder<Wallet>(
+                future: _walletFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator(color: Colors.white));
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
+                  }
+                  if (!snapshot.hasData) {
+                    return const Center(child: Text('Tidak dapat memuat data.', style: TextStyle(color: Colors.white)));
+                  }
+
+                  final wallet = snapshot.data!;
+                  final filteredTransactions = _filterTransactions(wallet.transactions);
+
+                  return Column(
                     children: [
-                      // Period selector
-                      Row(
-                        children: [
-                          _buildPeriodButton('Day'),
-                          _buildPeriodButton('Week'),
-                          _buildPeriodButton('Month'),
-                          _buildPeriodButton('Year'),
-                        ],
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Amount indicators
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Rp.12.000',
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft, end: Alignment.bottomRight,
+                              colors: [Colors.blue.shade400, AppColors.primaryGreen],
                             ),
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                          Text(
-                            'Rp.55.000',
-                            style: TextStyle(
-                              color: AppColors.primaryGreen,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Total Saldo', style: TextStyle(color: AppColors.white, fontSize: 18, fontWeight: FontWeight.w500)),
+                              const SizedBox(height: 12),
+                              Text(currencyFormatter.format(wallet.balance), style: const TextStyle(color: AppColors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-
                       const SizedBox(height: 20),
-
-                      // Chart area
                       Expanded(
                         child: Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.all(20),
-                          child: CustomPaint(
-                            painter: ChartPainter(),
-                            size: Size.infinite,
+                          decoration: const BoxDecoration(
+                            color: AppColors.white,
+                            borderRadius: BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    _buildPeriodButton('Day'),
+                                    _buildPeriodButton('Week'),
+                                    _buildPeriodButton('Month'),
+                                    _buildPeriodButton('Year'),
+                                  ],
+                                ),
+                                const SizedBox(height: 20),
+                                Expanded(
+                                  child: LineChart(
+                                    _buildChartData(filteredTransactions),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ],
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ],
@@ -231,13 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
         height: 80,
         decoration: const BoxDecoration(
           color: AppColors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 10,
-              offset: Offset(0, -5),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -251,14 +192,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPeriodButton(String period) {
-    bool isSelected = selectedPeriod == period;
+    bool isSelected = _selectedPeriod == period;
     return Expanded(
       child: GestureDetector(
-        onTap: () {
-          setState(() {
-            selectedPeriod = period;
-          });
-        },
+        onTap: () => setState(() => _selectedPeriod = period),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 4),
           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -281,89 +218,56 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBottomNavItem(IconData icon, int index) {
-    bool isSelected = selectedBottomIndex == index;
     return GestureDetector(
       onTap: () {
         if (index == 1) {
-          // Navigate to menu screen when bottom right button is pressed
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const MenuScreen()),
-          );
-        } else {
-          setState(() {
-            selectedBottomIndex = index;
-          });
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const MenuScreen()));
         }
       },
       child: Container(
         padding: const EdgeInsets.all(16),
-        child: Icon(
-          icon,
-          color: isSelected ? AppColors.primaryGreen : AppColors.grey,
-          size: 28,
-        ),
+        child: Icon(icon, color: index == 0 ? AppColors.primaryGreen : AppColors.grey, size: 28),
       ),
     );
   }
-}
 
-class ChartPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppColors.primaryGreen
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+  LineChartData _buildChartData(List<Transaction> transactions) {
+    List<FlSpot> spots = [];
+    double cumulativeBalance = 0;
 
-    final dotPaint = Paint()
-      ..color = AppColors.primaryGreen
-      ..style = PaintingStyle.fill;
+    transactions.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-    // Chart data points (simulating the growth curve from the image)
-    final points = [
-      Offset(0, size.height * 0.8),
-      Offset(size.width * 0.2, size.height * 0.7),
-      Offset(size.width * 0.4, size.height * 0.75),
-      Offset(size.width * 0.6, size.height * 0.6),
-      Offset(size.width * 0.8, size.height * 0.4),
-      Offset(size.width, size.height * 0.2),
-    ];
-
-    // Draw the line
-    final path = Path();
-    path.moveTo(points[0].dx, points[0].dy);
-
-    for (int i = 1; i < points.length; i++) {
-      final previous = points[i - 1];
-      final current = points[i];
-      final controlPoint1 = Offset(
-        previous.dx + (current.dx - previous.dx) * 0.5,
-        previous.dy,
-      );
-      final controlPoint2 = Offset(
-        previous.dx + (current.dx - previous.dx) * 0.5,
-        current.dy,
-      );
-      path.cubicTo(
-        controlPoint1.dx,
-        controlPoint1.dy,
-        controlPoint2.dx,
-        controlPoint2.dy,
-        current.dx,
-        current.dy,
-      );
+    for (var tx in transactions) {
+      if (tx.type == 'credit') {
+        cumulativeBalance += tx.amount;
+      } else {
+        cumulativeBalance -= tx.amount;
+      }
+      spots.add(FlSpot(tx.createdAt.millisecondsSinceEpoch.toDouble(), cumulativeBalance));
     }
 
-    canvas.drawPath(path, paint);
-
-    // Draw dots at data points
-    for (final point in points) {
-      canvas.drawCircle(point, 4, dotPaint);
+    if (spots.isEmpty) {
+        spots.add(FlSpot(DateTime.now().millisecondsSinceEpoch.toDouble(), 0));
     }
+
+    return LineChartData(
+      gridData: FlGridData(show: false),
+      titlesData: FlTitlesData(show: false),
+      borderData: FlBorderData(show: false),
+      lineBarsData: [
+        LineChartBarData(
+          spots: spots,
+          isCurved: true,
+          color: AppColors.primaryGreen,
+          barWidth: 4,
+          isStrokeCapRound: true,
+          dotData: FlDotData(show: false),
+          belowBarData: BarAreaData(
+            show: true,
+            color: AppColors.primaryGreen.withOpacity(0.3),
+          ),
+        ),
+      ],
+    );
   }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

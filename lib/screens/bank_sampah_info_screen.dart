@@ -73,13 +73,12 @@ class BankSampahInfoScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
                       const Text(
-                        'Bank Sampah Rosella adalah sebuah inisiatif komunitas yang bertujuan untuk mengelola sampah dengan cara yang berkelanjutan dan ramah lingkungan. \n\n'
+                        'Bank Sampah Rosella adalah sebuah inisiatif komunitas yang bertujuan untuk mengelola sampah dengan cara yang berkelanjutan dan ramah lingkungan. Bank Sampah Rosella Berdiri Berasal dari Inovasi Kelurahan Parittokaya Tahun 2013 Oleh Almarhumah Bu Endah Lurah. \n\n'
                         'Kami berkomitmen untuk:\n'
                         '• Mengurangi volume sampah yang berakhir di TPA\n'
                         '• Memberikan nilai ekonomis pada sampah yang dapat didaur ulang\n'
                         '• Meningkatkan kesadaran masyarakat tentang pengelolaan sampah\n'
-                        '• Menciptakan lingkungan yang lebih bersih dan sehat\n\n'
-                        'Bergabunglah dengan kami dalam misi menjaga kelestarian lingkungan melalui pengelolaan sampah yang bijak dan bertanggung jawab.',
+                        '• Menciptakan lingkungan yang lebih bersih dan sehat\n\n',
                         style: TextStyle(
                           color: AppColors.black,
                           fontSize: 14,
